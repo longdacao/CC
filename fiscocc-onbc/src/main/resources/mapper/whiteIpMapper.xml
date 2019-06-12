@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"   
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.bcos.fiscocc.onbc.dao.WhiteIpDAO">
+	
+	<select id="checkIp" resultType="org.bcos.fiscocc.onbc.dto.WhiteIp">
+		select 
+			id,
+			ip,
+			remark,
+			create_dt createDt,
+			update_dt updateDt
+		from t_white_ip t 
+		where t.ip = #{ip}
+	</select>
+
+</mapper>

@@ -1,0 +1,237 @@
+package org.bcos.evidence.sdk;
+import org.fisco.bcos.channel.client.Service;
+import org.fisco.bcos.web3j.abi.datatypes.Address;
+import org.fisco.bcos.web3j.abi.datatypes.Utf8String;
+import org.fisco.bcos.web3j.protocol.Web3j;
+
+import java.math.BigInteger;
+import java.security.SignatureException;
+import java.security.interfaces.ECPrivateKey;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+
+public interface EvidenceFace {
+    /**
+     * 计算特定数据的hash值
+     *
+     */
+    public String sha3(byte[] input);
+
+    /**
+     * 本接口会连接存证的json和相关文件的hash算出存证的hash
+     *
+     */
+    public String allSha3(String json, List<String> hashs);
+
+    /**
+     *加载私钥
+     *
+     * @param ecPrivateKey
+     */
+    public void loadPrivateKey(ECPrivateKey ecPrivateKey);
+
+    /**
+     * 按照appid加载私钥
+     * @param appid
+     * @param ecPrivateKey
+     */
+    public void loadPrivateKey(String appid, ECPrivateKey ecPrivateKey);
+
+    /**
+     *获取公钥
+     *
+     */
+    public String getPublickey();
+
+    /**
+     * 按appid获取公钥
+     * @param appid
+     * @return
+     */
+    public String getPublickey(String appid);
+
+    /**
+     *设置基础通信的Service类
+     */
+    public void setService(Service service);
+
+
+    /**
+     *获取基础通信的Service类
+     */
+    public Service getService();
+
+    /**
+     * 按照appid和seq获取Service
+     * @param appid
+     * @param seq
+     */
+    public Service getService(String appid, BigInteger seq);
+
+    /**
+     *设置用于访问区块链接口的Web3J类
+     */
+    public void setWeb3j(Web3j web3j);
+
+
+    /**
+     *获取访问区块链接口的Web3J类
+     */
+    public Web3j getWebj();
+
+    /**
+     *run SDK
+     */
+    void run();
+
+    /**
+     * 按照appid run SDK
+     * @param appid
+     *
+     */
+    void run(String appid, int groupId);
+
+    /**
+     * 初始化路由表相关的操作
+     * @param service 路由链的service类
+     * @param web3j 路由链的web3j类
+     * @param ecPrivateKey 路由链的ECPrivateKey类
+     * @param address 路由合约地址
+     * @param topics 关注的topic列表，仅对于server端有效；客户端可设置为null
+     */
+    @Deprecated
+    void initRoute(Service service, Web3j web3j, ECPrivateKey ecPrivateKey, String address, List<String> topics);
+
+    void initAppidRoute(String appid, Service service, Web3j web3j, ECPrivateKey ecPrivateKey, String address, List<String> topics);
+    /**
+     *对特定数据进行签名
+     *返回一个签名
+     */
+    public String signMessage(String evidenceHash);
+
+    /**
+     * 按照appid对特定数据进行签名
+     * @param appid
+     * @param evidenceHash
+     * @return
+     */
+    public String signMessage(String appid, String evidenceHash);
+
+    /**
+     *验证特定数据的签名
+     *返回一个公钥
+     */
+    public String verifySignedMessage(String evidenceHash, String signatureData) throws SignatureException, Exception;
+
+    /**
+     * 按照appid验证特定数据的签名,返回一个公钥
+     * @param appid
+     * @param evidenceHash
+     * @param signatureData
+     * @throws SignatureException
+     */
+    public String verifySignedMessage(String appid, String evidenceHash, String signatureData) throws SignatureException, Exception;
+
+    /**
+     *根据区块链hash值，获取证据数据
+     *
+     */
+    public EvidenceData getMessagebyHash(String address)throws InterruptedException, ExecutionException, Exception;
+
+    /**
+     * 按照appid,存证唯一序列号seq,区块链hash值，获取证据数据
+     * @param appid
+     * @param seq
+     * @param address
+     * @throws InterruptedException
+     * @throws ExecutionException
+     */
+    public EvidenceData getMessagebyHash(String appid, BigInteger seq, String address)throws InterruptedException, ExecutionException, Exception;
+
+    /**
+     *将特定证据数据的签名发送至区块链
+     *
+     * @param address 证据地址
+     * @param evidenceHash 证据信息
+     * @param signatureData 证据签名
+     * @return boolean 成功返回true
+     */
+    public boolean sendSignatureToBlockChain(String address, String evidenceHash, String signatureData)throws InterruptedException, ExecutionException, SignatureException, Exception;
+
+    /**
+     * 按照appid，存证唯一序列号和存证地址将特定证据数据的签名发送至区块链
+     * @param appid
+     * @param seq
+     * @param address
+     * @param evidenceHash
+     * @param signatureData
+     * @throws InterruptedException
+     * @throws ExecutionException
+     * @throws SignatureException
+     */
+    public boolean sendSignatureToBlockChain(String appid, BigInteger seq, String address, String evidenceHash, String signatureData)throws InterruptedException, ExecutionException, SignatureException, Exception;
+
+    /**
+     *设置异步回调
+     */
+    public void setPushCallback(Callback callback);
+
+    /**
+     *此接口WB需要调用，在调用newEvidence之前调用，用来初始化存证合约的工厂合约
+     */
+    public void createSignersDataInstance(String contractAddress);
+
+    /**
+     *新建一个存证
+     */
+    public Address newEvidence(String evi, String info, String id, String signatureDataString)throws InterruptedException, ExecutionException, SignatureException, Exception;
+
+    /**
+     *新建一个存证,自带签名
+     */
+    public Address newEvidence(String evi, String info, String id, String signatureDataString, String sender)throws InterruptedException, ExecutionException, SignatureException, Exception;
+
+    /**
+     * 按照appid，存证唯一序列号seq新建一个存证
+     * @param appid
+     * @param seq
+     * @param evi
+     * @param info
+     * @param id
+     * @param signatureDataString
+     * @throws InterruptedException
+     * @throws ExecutionException
+     * @throws SignatureException
+     */
+    public Address newEvidence(String appid, BigInteger seq, String evi, String info, String id, String signatureDataString)throws InterruptedException, ExecutionException, SignatureException, Exception;
+    
+    /**
+     * 按照appid，存证唯一序列号seq新建一个存证,自带签名
+     * @param appid
+     * @param seq
+     * @param evi
+     * @param info
+     * @param id
+     * @param signatureDataString
+     * @param sender
+     * @return
+     * @throws InterruptedException
+     * @throws ExecutionException
+     * @throws SignatureException
+     */
+    public Address newEvidence(String appid, BigInteger seq, String evi, String info, String id, String signatureDataString, String sender)throws InterruptedException, ExecutionException, SignatureException, Exception;
+
+    /**
+     *验证证据是否收集全了签名
+     */
+    public boolean verifyEvidence(EvidenceData data)throws SignatureException, Exception;
+
+    /**
+     * 按照appid来验证证据是否收集全了签名
+     * @param appid
+     * @param data
+     * @throws SignatureException
+     */
+    public boolean verifyEvidence(String appid, EvidenceData data)throws SignatureException, Exception;
+
+}

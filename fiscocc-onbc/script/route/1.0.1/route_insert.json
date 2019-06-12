@@ -1,0 +1,31 @@
+{
+    "nodes":[],
+    "orgs":[],
+    "sets":[],
+    "rules":[
+        {
+            "appid":"IDA1EQRG",
+            "name":"IDA1EQRG-2",
+            "seqMin":100001,
+            "seqMax":5000000,
+            "orgs":["SZT","TB","GTJA"],
+            "sets":["set0"]
+        },
+        {
+            "appid":"IDALHM0x",
+            "name":"IDALHM0x-2",
+            "seqMin":100001,
+            "seqMax":5000000,
+            "orgs":["SZT","TB","GTJA"],
+            "sets":["set0"]
+        },
+        {
+            "appid":"IDAMxM1y",
+            "name":"IDAMxM1y-2",
+            "seqMin":100001,
+            "seqMax":5000000,
+            "orgs":["SZT","TB","GTJA"],
+            "sets":["set0"]
+        }
+    ]
+}

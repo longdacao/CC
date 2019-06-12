@@ -1,0 +1,212 @@
+package org.bcos.evidence.example;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigInteger;
+import java.security.Key;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SignatureException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
+import java.security.interfaces.ECPrivateKey;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+
+import org.fisco.bcos.channel.client.Service;
+import org.bcos.evidence.sdk.Callback;
+import org.bcos.evidence.sdk.EvidenceData;
+import org.bcos.evidence.sdk.EvidenceFace;
+import org.bcos.evidence.sdkImpl.EvidenceFaceImpl;
+import org.fisco.bcos.web3j.protocol.Web3j;
+import org.fisco.bcos.web3j.protocol.channel.ChannelEthereumService;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+/**
+ * Created by tab on 18/4/24.
+ */
+public class Demo {
+
+    /**
+     * @desc 简单通过jks来签名
+     * @throws KeyStoreException
+     * @throws CertificateException
+     * @throws NoSuchAlgorithmException
+     * @throws IOException
+     * @throws UnrecoverableKeyException
+     */
+    public static void demoSDKSign() throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException, UnrecoverableKeyException {
+        //new 一个证据上链sdk的实现类
+        EvidenceFace evidenceFace = new EvidenceFaceImpl();
+
+        //读取keystore里的EC证书私钥，用来初始化SDK的实现类
+        //证书可以用java工具keytool生成
+        // keytool -genkeypair -alias ec -keyalg EC -keysize 256 -sigalg SHA256withECDSA  -validity 365 -storetype JKS -keystore ectest.jks -storepass 123456
+        KeyStore ks = KeyStore.getInstance("JKS");
+        InputStream ksInputStream = org.bcos.evidence.demo.Demo.class.getClassLoader().getResourceAsStream("ectest.jks");
+        ks.load(ksInputStream, "123456".toCharArray()); //123456是密码
+        Key key = ks.getKey("ec", "123456".toCharArray());
+
+        String appid = "";//需要微众分配
+        evidenceFace.loadPrivateKey(appid, (ECPrivateKey) key);
+
+        String plaintext = "hello world";//明文字符串
+        String hashValue = evidenceFace.sha3(plaintext.getBytes());//得到hash值
+        String signatureData = evidenceFace.signMessage(appid, hashValue);//得到签名值
+
+        System.out.println("signatureData is:" + signatureData);
+
+    }
+
+    static class DemoCallbackImpl implements Callback {
+
+        @Override
+        public void onPush(String address) {
+            try {
+                //旧接口，目前保留，不用实现
+            } catch (Exception e) {}
+        }
+
+        @Override
+        public void onPush(String appid, BigInteger seq, String address) {
+            try {
+                //用证据地址获取证据
+                EvidenceData evidenceData =  evidenceFace.getMessagebyHash(appid, seq, address);
+                //证据签名
+                String signatureData = evidenceFace.signMessage(appid, evidenceData.getEvidenceHash());
+                //发送证据上链
+                evidenceFace.sendSignatureToBlockChain(appid, seq, address,evidenceData.getEvidenceHash(),signatureData);
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        public void setSDK(EvidenceFace evidenceFace) {
+            this.evidenceFace = evidenceFace;
+        }
+
+        EvidenceFace evidenceFace;
+    }
+
+
+    /**
+     * @desc 服务端这里设置要监听的topic列表，发布方发布了消息，会收到对应的消息
+     * @throws KeyStoreException
+     * @throws CertificateException
+     * @throws NoSuchAlgorithmException
+     * @throws IOException
+     * @throws UnrecoverableKeyException
+     */
+    public static void demoSDKCallback() throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException, UnrecoverableKeyException {
+        EvidenceFace evidenceFace = new EvidenceFaceImpl();
+
+        KeyStore ks = KeyStore.getInstance("JKS");
+        InputStream ksInputStream = org.bcos.evidence.example.Demo.class.getClassLoader().getResourceAsStream("ectest.jks");//jks文件
+        ks.load(ksInputStream, "123456".toCharArray()); //123456是密码
+        Key key = ks.getKey("ec", "123456".toCharArray());
+
+        String appid = "";//需要微众分配
+        evidenceFace.loadPrivateKey(appid, (ECPrivateKey) key);
+
+        String routeAddress = "";//需要微众分配的一个地址
+
+        ApplicationContext context = new ClassPathXmlApplicationContext("classpath:applicationContext.xml");
+        Service routeService = context.getBean(Service.class);
+        ChannelEthereumService channelEthereumService = new ChannelEthereumService();
+        channelEthereumService.setChannelService(routeService);
+        channelEthereumService.setTimeout(10000);
+
+        //要监听的topic,即监听和订阅要保持一致
+        List<String> topicList = new ArrayList<>();
+        topicList.add("topic_1");
+
+        //初始化evidenceFace
+        evidenceFace.initAppidRoute(appid, routeService, Web3j.build(channelEthereumService), (ECPrivateKey) key, routeAddress, topicList);
+
+        //run evidenceFace
+        evidenceFace.run(appid);
+
+
+        //要设置监听的回调接口，即如果基于某个topic的另一方pub发布方发布了消息，sub订阅方callback会收到消息
+        DemoCallbackImpl callback = new DemoCallbackImpl();
+        callback.setSDK(evidenceFace);
+        evidenceFace.setPushCallback(callback);
+
+    }
+
+    /**
+     * @desc 存证获取和验证存证
+     * @throws KeyStoreException
+     * @throws CertificateException
+     * @throws NoSuchAlgorithmException
+     * @throws IOException
+     * @throws UnrecoverableKeyException
+     * @throws ExecutionException
+     * @throws InterruptedException
+     * @throws SignatureException
+     */
+    public static void demoSDKGetAndVerify() throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException, UnrecoverableKeyException, ExecutionException, InterruptedException, SignatureException, Exception{
+
+        EvidenceFace evidenceFace = new EvidenceFaceImpl();
+
+        KeyStore ks = KeyStore.getInstance("JKS");
+        InputStream ksInputStream = org.bcos.evidence.demo.Demo.class.getClassLoader().getResourceAsStream("ectest.jks");
+        ks.load(ksInputStream, "123456".toCharArray()); //123456是密码
+        Key key = ks.getKey("ec", "123456".toCharArray());
+
+        String appid = "";//需要微众分配
+        String routeAddress= "";//需要微众分配
+        evidenceFace.loadPrivateKey(appid, (ECPrivateKey) key);
+
+        String plaintext = "hello world";//明文字符串
+
+        //这里先获取到对原文的hash值
+        String hashValue = evidenceFace.sha3(plaintext.getBytes());//得到hash值
+
+        //seq是存证id，address是存证的地址。这里的两个参数可以从DemoCallbackImpl获得
+        BigInteger seq = new BigInteger("0");
+        String address = "";
+
+        //执行这里之前，evidenceFace需要先完成init和run
+        ApplicationContext context = new ClassPathXmlApplicationContext("classpath:applicationContext.xml");
+        Service routeService = context.getBean(Service.class);
+        ChannelEthereumService channelEthereumService = new ChannelEthereumService();
+        channelEthereumService.setChannelService(routeService);
+        channelEthereumService.setTimeout(10000);
+
+        //要监听的topic,即监听和订阅要保持一致
+        List<String> topicList = new ArrayList<>();
+        topicList.add("topic_1");
+
+        //初始化evidenceFace
+        evidenceFace.initAppidRoute(appid, routeService, Web3j.build(channelEthereumService), (ECPrivateKey) key, routeAddress, topicList);
+
+        //run evidenceFace
+        evidenceFace.run(appid);
+
+        EvidenceData evidenceData =  evidenceFace.getMessagebyHash(appid, seq, address);
+
+        if (evidenceData == null) {
+            System.out.println("evidenceData is null");
+            return;
+        }
+
+        //先对比hash值是否一样
+        if (!hashValue.equals(evidenceData.getEvidenceHash())) {
+            System.out.println("evidenceData's hash is not match");
+            return;
+        }
+
+
+        if (!evidenceFace.verifyEvidence(appid, evidenceData)) {
+            System.out.println("verifyEvidence is false");
+            return;
+        }
+
+        System.out.println("verifyEvidence is ok");
+    }
+}

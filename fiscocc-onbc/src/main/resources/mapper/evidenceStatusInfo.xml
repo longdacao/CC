@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"   
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.bcos.fiscocc.onbc.dao.EvidenceStatusInfoDAO">
+
+	<resultMap id="BaseResultMap" type="org.bcos.fiscocc.onbc.dto.EvidenceStatusInfo">
+		<result column="evidence_id" jdbcType="VARCHAR" property="evidenceID" />
+		<result column="evidence_hash" jdbcType="VARCHAR" property="evidenceHash" />
+		<result column="evidence_address" jdbcType="VARCHAR" property="evidenceAddress" />
+		<result column="sign_flag" jdbcType="INTEGER" property="signFlag" />
+	</resultMap>
+
+	<insert id="addEvidence" parameterType="org.bcos.fiscocc.onbc.dto.EvidenceStatusInfo">
+		<selectKey keyProperty="evidenceID" resultType="java.lang.Long">
+       		select LAST_INSERT_ID()
+        </selectKey>
+		insert into t_evidence_status_info(
+			`app_id`,
+			`user_info`,
+			`customer_type`,
+			`user_name`,
+			`identification_type`,
+			`identification_no`,
+			`evidence_hash`,
+			`ex_data`,
+			`sign_data`,
+			`evidence_address`,
+			`sign_flag`,
+			`gmt_create`,
+			`gmt_modify`,
+			`sign_or_not`
+		) values (
+			#{appID},
+			#{userInfo},
+			#{customerType},
+			#{userName},
+			#{identificationType},
+			#{identificationNo},
+			#{evidenceHash},
+			#{exData},
+			"",
+			"",
+			0,
+			NOW(),
+			DATE_SUB(NOW(),INTERVAL 2 DAY),
+			1
+		)
+	</insert>
+	
+	<insert id="addEvidenceForOrgs" parameterType="org.bcos.fiscocc.onbc.dto.EvidenceStatusInfo">
+		<selectKey keyProperty="evidenceID" resultType="java.lang.Long">
+       		select LAST_INSERT_ID()
+        </selectKey>
+		insert into t_evidence_status_info(
+			`app_id`,
+			`user_info`,
+			`customer_type`,
+			`user_name`,
+			`identification_type`,
+			`identification_no`,
+			`evidence_hash`,
+			`ex_data`,
+			`set_side`,
+			`sign_or_not`,
+			`sign_data`,
+			`evidence_address`,
+			`sign_flag`,
+			`gmt_create`,
+			`gmt_modify`
+		) values (
+			#{appID},
+			#{userInfo},
+			#{customerType},
+			#{userName},
+			#{identificationType},
+			#{identificationNo},
+			#{evidenceHash},
+			#{ex_data}
+			1,
+			#{signOrNot},
+			#{signData},
+			"",
+			0,
+			NOW(),
+			DATE_SUB(NOW(),INTERVAL 2 DAY)
+		)
+	</insert>
+	
+	<select id="getMaxId" resultType="org.bcos.fiscocc.onbc.dto.EvidenceStatusInfo">
+		select 
+			max(evidence_id) as evidenceID
+		from t_evidence_status_info
+	</select>
+	
+	<select id="getUnChainEvidence" resultType="org.bcos.fiscocc.onbc.dto.EvidenceStatusInfo">
+		select 
+			evidence_id as evidenceID,
+			app_id as appID,
+			evidence_hash as evidenceHash,
+			ex_data as exData,
+			sign_data as signData,
+			set_side as setSide,
+			sign_or_not as signOrNot,
+			evidence_address as evidenceAddress,
+			sign_flag as signFlag,
+			notify_count as notifyCount,
+			chain_count as chainCount,
+			version
+		from t_evidence_status_info 
+		where evidence_address = ""
+		  and app_id = #{appId}
+		  and sign_flag = 0
+		  <![CDATA[ and  chain_count <= #{chainCountMax} ]]>
+		  <![CDATA[ and TIMESTAMPDIFF(SECOND,gmt_modify,NOW()) >= #{chainTime} ]]>
+		  limit 0,#{selectCount}
+	</select>
+	
+	<select id="getUnsignEvidence" resultType="org.bcos.fiscocc.onbc.dto.EvidenceStatusInfo">
+		select 
+			evidence_id as evidenceID,
+			app_id as appID,
+			evidence_hash as evidenceHash,
+			ex_data as exData,
+			sign_data as signData,
+			set_side as setSide,
+			sign_or_not as signOrNot,
+			evidence_address as evidenceAddress,
+			sign_flag as signFlag,
+			notify_count as notifyCount,
+			chain_count as chainCount,
+			version
+		from t_evidence_status_info 
+		where evidence_address != ""
+		  and app_id = #{appId}
+		  and sign_flag = 0
+		  <![CDATA[ and notify_count <= #{notifyCountMax} ]]>
+		  <![CDATA[ and TIMESTAMPDIFF(SECOND,gmt_modify,NOW()) >= #{chainTime} ]]>
+		  limit 0,#{selectCount}
+	</select>
+	
+	<select id="getEvidenceInfo" resultType="org.bcos.fiscocc.onbc.dto.EvidenceStatusInfo">
+		select 
+			evidence_id as evidenceID,
+			app_id as appID,
+			user_info as userInfo,
+			evidence_hash as evidenceHash,
+			ex_data as exData,
+			sign_data as signData,
+			evidence_address as evidenceAddress,
+			sign_flag as signFlag,
+			notify_count as notifyCount,
+			chain_count as chainCount,
+			version
+		from t_evidence_status_info 
+		where evidence_id = #{evidenceID}
+	</select>
+	
+	<select id="getEvidenceID" resultType="java.lang.String">
+		select 
+			evidence_id as evidenceID
+		from t_evidence_status_info 
+		where evidence_id = #{evidenceID}
+	</select>
+	
+	<select id="getEvidenceListByQueryType" parameterType="map" resultType="org.bcos.fiscocc.onbc.entity.rsp.RspEvidenceInfo">
+		select 
+			evidence_id as evidenceID,
+			app_id as appID,
+			customer_type as customerType,
+			user_name as userName,
+			identification_type as identificationType,
+			identification_no as identificationNo,
+			evidence_hash as evidenceHash,
+			sign_flag as signFlag,
+			date_format(gmt_create,'%Y-%c-%d %h:%i:%s') as evidenceCreateTime,
+			date_format(gmt_modify,'%Y-%c-%d %h:%i:%s') as evidenceUpdateTime
+		from t_evidence_status_info 
+		where 1=1
+		<if test="queryType != null and queryType == '0'.toString()">
+          and identification_no = #{queryParam}
+		</if>
+		<if test="queryType != null and queryType == '1'.toString()">
+          and evidence_id = #{queryParam}
+		</if>
+		<if test="queryType != null and queryType == '2'.toString()">
+          and app_id = #{queryParam}
+		</if>
+	</select>
+	
+	<select id="getEvidenceInfoByHash" resultType="org.bcos.fiscocc.onbc.dto.EvidenceStatusInfo">
+		select 
+			evidence_id as evidenceID,
+			evidence_hash as evidenceHash,
+			ex_data as exData,
+			sign_flag as signFlag
+		from t_evidence_status_info 
+		where evidence_hash = #{hash}
+	</select>
+
+	<update id="updateEvidenceAddress">
+		update t_evidence_status_info set evidence_address=#{evidenceAddress},gmt_modify=NOW() where evidence_id = #{evidenceID}
+	</update>
+	
+	<update id="updateSignInfo">
+		update t_evidence_status_info 
+		set sign_data = #{signData},
+			sign_flag = 1,
+			gmt_modify = NOW() 
+		where evidence_id = #{evidenceID}
+	</update>
+	
+	<update id="updateNotifyCount">
+		update t_evidence_status_info set notify_count=#{notifyCount},gmt_modify=NOW() where evidence_id = #{evidenceID}
+	</update>
+	
+	<update id="updateNotifyCountAndVersion">
+		update t_evidence_status_info set notify_count=#{notifyCount},gmt_modify=NOW(),version=version + 1 where evidence_id = #{evidenceID} and version = #{version}
+	</update>
+	
+	<update id="updateChainCount">
+		update t_evidence_status_info set chain_count=#{chainCount},gmt_modify=NOW() where evidence_id = #{evidenceID}
+	</update>
+	
+	<update id="updateChainCountAndVersion">
+		update t_evidence_status_info set chain_count=#{chainCount},gmt_modify=NOW(),version=version + 1 where evidence_id = #{evidenceID} and version = #{version}
+	</update>
+
+</mapper>
