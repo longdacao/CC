@@ -7,7 +7,7 @@ fisco-cc存证系统由三家机构组成：深圳通、太保、国泰军安。
 ## 2. 获取存证业务源码（三家机构都执行）
 ```
 前提条件：底层链已经按照要求部署完毕。
-git clone git@git.weoa.com:ttip/fiscocc-onbc.git
+git clone https://github.com/jishitang/CC.git
 执行编译
 gradle build
 生成dist目录，将dist目录下的lib目录下web3sdk.jar替换成最新
